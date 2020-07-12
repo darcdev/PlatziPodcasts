@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import Layout from '../components/Layout';
+import ChannelGrid from '../components/ChannelGrid';
+import { PodcastsList } from '../components/PodcastsList';
 export default class extends React.Component {
   static async getInitialProps({ query }) {
     let idChannel = query.id;
@@ -22,9 +25,7 @@ export default class extends React.Component {
   render() {
     const { channel, series, audioClips } = this.props;
     return (
-      <div>
-        <header>Podcasts</header>
-
+      <Layout title='Platzipodcasts -podcasts'>
         <div
           className='banner'
           style={{
@@ -37,25 +38,12 @@ export default class extends React.Component {
         {series.length > 0 && (
           <div>
             <h2>Series</h2>
-            <div className='channels'>
-              {series.map((serie) => (
-                <Link href={`/channel?id=${serie.id}`} prefetch>
-                  <a className='channel'>
-                    <img src={serie.urls.logo_image.original} alt='' />
-                    <h2>{serie.title}</h2>
-                  </a>
-                </Link>
-              ))}
-            </div>
+            <ChannelGrid channels={series} />
           </div>
         )}
 
         <h2>Ultimos Podcasts</h2>
-        {audioClips.map((clip) => (
-          <div className='podcast' key={clip.id}>
-            <Link href={`/podcasts?id=${clip.id}`}>{clip.title}</Link>
-          </div>
-        ))}
+        <PodcastsList podcasts={audioClips} />
 
         <style jsx>{`
           header {
@@ -130,7 +118,7 @@ export default class extends React.Component {
             background: white;
           }
         `}</style>
-      </div>
+      </Layout>
     );
   }
 }
