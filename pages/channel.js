@@ -1,12 +1,21 @@
-import Layout from '../components/Layout';
 import 'isomorphic-fetch';
+import Layout from '../components/Layout';
 import ChannelGrid from '../components/ChannelGrid';
-import { PodcastsList } from '../components/PodcastsList';
-import Error from 'next/error';
+import PodcastList from '../components/PodcastList';
+import PodcastListWithClick from '../components/PodcastListWithClick';
+import PodcastPlayer from '../components/PodcastPlayer';
+import Error from './_error';
+
 export default class extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { openPodcast: null };
+  }
+
   static async getInitialProps({ query, res }) {
+    let idChannel = query.id;
+
     try {
-      let idChannel = query.id;
       let [reqChannel, reqSeries, reqAudios] = await Promise.all([
         fetch(`https://api.audioboom.com/channels/${idChannel}`),
         fetch(`https://api.audioboom.com/channels/${idChannel}/child_channels`),
@@ -26,25 +35,56 @@ export default class extends React.Component {
       let dataChannel = await reqChannel.json();
       let channel = dataChannel.body.channel;
 
-      let dataSeries = await reqSeries.json();
-      let series = dataSeries.body.channels;
-
       let dataAudios = await reqAudios.json();
       let audioClips = dataAudios.body.audio_clips;
 
+      let dataSeries = await reqSeries.json();
+      let series = dataSeries.body.channels;
+
       return { channel, audioClips, series, statusCode: 200 };
-    } catch (err) {
+    } catch (e) {
       return { channel: null, audioClips: null, series: null, statusCode: 503 };
     }
   }
+
+  openPodcast = (event, podcast) => {
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      (event.nativeEvent && event.nativeEvent.which === 2)
+    ) {
+      // Si está haciendo Ctrl+Click o Cmd+Click, dejamos que el click suceda normalmente
+      return;
+    }
+
+    event.preventDefault();
+    this.setState({
+      openPodcast: podcast,
+    });
+  };
+
+  closePodcast = (event) => {
+    event.preventDefault();
+    this.setState({
+      openPodcast: null,
+    });
+  };
+
   render() {
-    const { channel, series, audioClips, statusCode } = this.props;
+    const { channel, audioClips, series, statusCode } = this.props;
+    const { openPodcast } = this.state;
 
     if (statusCode !== 200) {
       return <Error statusCode={statusCode} />;
     }
+
     return (
-      <Layout title='Platzipodcasts -podcasts'>
+      <Layout title={channel.title}>
+        {openPodcast && (
+          <PodcastPlayer clip={openPodcast} onClose={this.closePodcast} />
+        )}
+
         <div
           className='banner'
           style={{
@@ -62,16 +102,12 @@ export default class extends React.Component {
         )}
 
         <h2>Ultimos Podcasts</h2>
-        <PodcastsList podcasts={audioClips} />
+        <PodcastListWithClick
+          podcasts={audioClips}
+          onClickPodcast={this.openPodcast}
+        />
 
         <style jsx>{`
-          header {
-            color: #fff;
-            background: #8756ca;
-            padding: 15px;
-            text-align: center;
-          }
-
           .banner {
             width: 100%;
             padding-bottom: 25%;
@@ -79,62 +115,15 @@ export default class extends React.Component {
             background-size: cover;
             background-color: #aaa;
           }
-
-          .channels {
-            display: grid;
-            grid-gap: 15px;
-            padding: 15px;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-          }
-          a.channel {
-            display: block;
-            margin-bottom: 0.5em;
-            color: #333;
-            text-decoration: none;
-          }
-          .channel img {
-            border-radius: 3px;
-            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.15);
-            width: 100%;
-          }
           h1 {
             font-weight: 600;
             padding: 15px;
           }
           h2 {
-            padding: 5px;
-            font-size: 0.9em;
+            padding: 15px;
+            font-size: 1.2em;
             font-weight: 600;
             margin: 0;
-            text-align: center;
-          }
-
-          .podcast {
-            display: block;
-            text-decoration: none;
-            color: #333;
-            padding: 15px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-          }
-          .podcast:hover {
-            color: #000;
-          }
-          .podcast h3 {
-            margin: 0;
-          }
-          .podcast .meta {
-            color: #666;
-            margin-top: 0.5em;
-            font-size: 0.8em;
-          }
-        `}</style>
-
-        <style jsx global>{`
-          body {
-            margin: 0;
-            font-family: system-ui;
-            background: white;
           }
         `}</style>
       </Layout>
